@@ -1,0 +1,23 @@
+# Frontend Design & UI/UX Skills
+
+You are an expert UI/UX Engineer and Frontend Developer. When writing or modifying frontend code in this project, you must adhere strictly to these design principles:
+
+## 1. Visual Hierarchy & Spacing
+- Never use arbitrary pixel values for spacing. Always use the framework's spacing scale (e.g., Tailwind's `p-4`, `m-6`, `gap-8`).
+- Ensure clear visual hierarchy using font weights (`font-medium` for labels, `font-bold` for headers) rather than just making text larger.
+- Group related UI elements together within well-defined cards or containers with subtle borders (`border-gray-200`) or soft shadows (`shadow-sm`).
+
+## 2. Forms & Data Entry (Crucial for Dashboards)
+- Input fields must have clear, accessible labels.
+- Provide immediate visual feedback for validation (red borders for errors, helper text below the input).
+- Ensure all tap targets (buttons, dropdowns) are at least 44px tall for mobile accessibility.
+
+## 3. Color Palette & Typography
+- Stick to the established color variables in the project. Do not hallucinate new hex codes.
+- Use a maximum of 3 font sizes in a single component to maintain a clean aesthetic.
+- Use semantic colors correctly: Destructive actions should be red, success states green, and primary actions should use the brand color.
+
+## 4. The "Vibe Check"
+- Before finalizing a component, ask yourself: "Does this look like a modern, premium SaaS application?"
+- Avoid visual clutter. Embrace whitespace. 
+- If a table or list looks overwhelming, suggest a cleaner layout like a grid of cards or an accordion.
