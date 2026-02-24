@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { Project, User } from '../types';
 
 interface AppContextType {
@@ -63,8 +63,37 @@ const initialUsers: User[] = [
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-    const [projects, setProjects] = useState<Project[]>(initialProjects);
-    const [users, setUsers] = useState<User[]>(initialUsers);
+    // Initialize state from local storage or fallback to default data
+    const [projects, setProjects] = useState<Project[]>(() => {
+        try {
+            const savedProjects = localStorage.getItem('app_projects');
+            return savedProjects ? JSON.parse(savedProjects) : initialProjects;
+        } catch {
+            return initialProjects;
+        }
+    });
+
+    const [users, setUsers] = useState<User[]>(() => {
+        try {
+            const savedUsers = localStorage.getItem('app_users');
+            return savedUsers ? JSON.parse(savedUsers) : initialUsers;
+        } catch {
+            return initialUsers;
+        }
+    });
+
+    // Save to local storage whenever state changes
+    useEffect(() => {
+        if (projects !== initialProjects || localStorage.getItem('app_projects')) {
+            localStorage.setItem('app_projects', JSON.stringify(projects));
+        }
+    }, [projects]);
+
+    useEffect(() => {
+        if (users !== initialUsers || localStorage.getItem('app_users')) {
+            localStorage.setItem('app_users', JSON.stringify(users));
+        }
+    }, [users]);
 
     const addProject = (project: Project) => setProjects(prev => [...prev, project]);
 
