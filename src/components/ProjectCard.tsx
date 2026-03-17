@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, User as UserIcon, Trash2, Edit2, Plus } from 'lucide-react';
 import type { Project, ToDo, TodoStatus } from '../types/index.ts';
-import { getInitials, formatCurrency, formatDate, getRandomAvatarColor } from '../utils/helpers.ts';
-import { useMemo, useState } from 'react';
+import { getInitials, formatCurrency, formatDate, getAvatarColor } from '../utils/helpers.ts';
+import { useState } from 'react';
 import { useAppContext } from '../context/AppContext.tsx';
 import ProjectForm from './Forms/ProjectForm.tsx';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,7 +20,7 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
     // Assign a stable random color for this card instance, or we could store this in the Project object
     // For now, useMemo keeps it stable during re-renders,
     // but true persistence would require adding a color field to Project interface.
-    const bgColor = useMemo(() => getRandomAvatarColor(), []);
+    const bgColor = getAvatarColor(project.id);
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -54,15 +54,24 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
         updateProject({ ...project, todos: updatedTodos });
     };
 
-    const handleAddTodo = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && newTodoText.trim()) {
+    const submitNewTodo = () => {
+        if (newTodoText.trim()) {
             const newTodo: ToDo = {
                 id: uuidv4(),
+                projectId: project.id,
                 task: newTodoText.trim(),
-                status: 'pending'
+                status: 'pending',
+                priority: 'medium',
+                createdAt: new Date().toISOString()
             };
             updateProject({ ...project, todos: [...project.todos, newTodo] });
             setNewTodoText('');
+        }
+    };
+
+    const handleAddTodo = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            submitNewTodo();
         }
     };
 
@@ -72,7 +81,10 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
                 onClick={() => navigate(`/projects/${project.id}`)}
                 className="relative bg-slate-900 rounded-2xl p-6 border border-slate-800 hover:border-slate-700 hover:shadow-2xl hover:shadow-black/50 transition-all cursor-pointer group flex flex-col h-full"
             >
-                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <div
+                    className="absolute top-4 right-4 flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity z-10"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <button
                         onClick={handleEdit}
                         className="p-1.5 text-slate-400 hover:text-brand hover:bg-slate-800 rounded-lg transition-colors bg-slate-900/80 backdrop-blur-sm"
@@ -173,7 +185,13 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
 
                     {/* Add new todo */}
                     <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-800" onClick={(e) => e.stopPropagation()}>
-                        <Plus className="w-4 h-4 text-slate-500" />
+                        <button
+                            onClick={submitNewTodo}
+                            className="p-1 hover:bg-slate-800 rounded-lg transition-colors text-slate-500 hover:text-brand"
+                            title="Add task"
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
                         <input
                             type="text"
                             placeholder="Add a new task..."

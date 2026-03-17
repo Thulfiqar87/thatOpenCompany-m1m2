@@ -1,9 +1,14 @@
 export type TodoStatus = 'pending' | 'in-progress' | 'completed';
+export type TodoPriority = 'low' | 'medium' | 'high';
 
 export interface ToDo {
     id: string;
+    projectId: string;
     task: string;
     status: TodoStatus;
+    priority: TodoPriority;
+    assignee?: string;
+    createdAt: string;
 }
 
 export interface Project {

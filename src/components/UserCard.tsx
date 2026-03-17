@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Calendar, Trash2, Edit2, Linkedin } from 'lucide-react';
 import type { User, Project } from '../types/index.ts';
-import { getInitials, getRandomAvatarColor } from '../utils/helpers.ts';
-import { useMemo, useState } from 'react';
+import { getInitials, getAvatarColor } from '../utils/helpers.ts';
+import { useState } from 'react';
 import { useAppContext } from '../context/AppContext.tsx';
 import UserForm from './Forms/UserForm.tsx';
 
@@ -13,7 +13,7 @@ interface UserCardProps {
 const UserCard = ({ user }: UserCardProps) => {
     const navigate = useNavigate();
     const { projects, deleteUser } = useAppContext();
-    const bgColor = useMemo(() => getRandomAvatarColor(), []);
+    const bgColor = getAvatarColor(user.id);
     const [isEditing, setIsEditing] = useState(false);
 
     // Map project IDs to project names for pills

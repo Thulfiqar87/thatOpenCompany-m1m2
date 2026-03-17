@@ -8,10 +8,13 @@ export const avatarColors = [
     'bg-slate-500',
 ];
 
-// Utility function to randomly select a color
-export const getRandomAvatarColor = (): string => {
-    const randomIndex = Math.floor(Math.random() * avatarColors.length);
-    return avatarColors[randomIndex];
+// Utility function to get a stable color based on an id string (hash-based)
+export const getAvatarColor = (id: string): string => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+        hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return avatarColors[Math.abs(hash) % avatarColors.length];
 };
 
 // Gets initials from a name (first two letters or initials of two words)
