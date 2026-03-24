@@ -4,10 +4,12 @@ import ProjectsView from './views/ProjectsView.tsx';
 import UsersView from './views/UsersView.tsx';
 import ProjectDetailsView from './views/ProjectDetailsView.tsx';
 import { AppProvider } from './context/AppContext.tsx';
+import { BIMProvider } from './context/BIMContext.tsx';
 
 function App() {
   return (
     <AppProvider>
+      <BIMProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -18,6 +20,7 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </BIMProvider>
     </AppProvider>
   );
 }
