@@ -29,10 +29,20 @@ const ItemsFinderPanel = () => {
   const [error, setError] = useState('');
 
   // ----------------------------------------------------------------
-  // Build ItemsQueryParams from the form fields
+  // Build query params from the form fields
   // ----------------------------------------------------------------
-  const buildQuery = () => {
-    const params: OBC.ItemsQueryParams = {};
+  interface QueryParams {
+    categories?: RegExp[];
+    attributes?: {
+      queries: Array<{
+        name: RegExp;
+        value?: RegExp;
+      }>;
+    };
+  }
+
+  const buildQuery = (): QueryParams => {
+    const params: QueryParams = {};
 
     if (form.category.trim()) {
       try {

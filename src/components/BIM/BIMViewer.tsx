@@ -135,7 +135,7 @@ const BIMViewer = ({ projectId }: BIMViewerProps) => {
   const handleItemClick = async (e: MouseEvent) => {
     const components = getComponents();
     const world = getWorld();
-    if (!components || !world) return;
+    if (!components || !world || !world.renderer) return;
 
     const fm = components.get(OBC.FragmentsManager);
     const canvas = world.renderer.three.domElement;
