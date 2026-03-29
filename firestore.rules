@@ -5,6 +5,10 @@ service cloud.firestore {
     // Only allow access to the specific collections used by the app
     match /projects/{projectId} {
       allow read, write: if true;
+
+      match /smartViews/{viewId} {
+        allow read, write: if true;
+      }
     }
     match /users/{userId} {
       allow read, write: if true;

@@ -1,30 +1,37 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-  deleteDoc,
-} from 'firebase/firestore';
-import { db } from '../firebase';
 import type { SmartView } from '../types/bim';
 
-const smartViewsCol = (projectId: string) =>
-  collection(db, 'projects', projectId, 'smartViews');
+const storageKey = (projectId: string) => `smartViews:${projectId}`;
+
+function readAll(projectId: string): SmartView[] {
+  try {
+    return JSON.parse(localStorage.getItem(storageKey(projectId)) ?? '[]') as SmartView[];
+  } catch {
+    return [];
+  }
+}
+
+function writeAll(projectId: string, views: SmartView[]): void {
+  localStorage.setItem(storageKey(projectId), JSON.stringify(views));
+}
 
 export async function getSmartViews(projectId: string): Promise<SmartView[]> {
-  const snap = await getDocs(smartViewsCol(projectId));
-  return snap.docs.map(d => d.data() as SmartView);
+  return readAll(projectId);
 }
 
 export async function saveSmartView(view: SmartView): Promise<void> {
-  const ref = doc(db, 'projects', view.projectId, 'smartViews', view.id);
-  // Firestore can't store Set<number>; queries are plain objects so this is safe.
-  await setDoc(ref, view);
+  const all = readAll(view.projectId);
+  const idx = all.findIndex(v => v.id === view.id);
+  if (idx >= 0) {
+    all[idx] = view;
+  } else {
+    all.push(view);
+  }
+  writeAll(view.projectId, all);
 }
 
 export async function deleteSmartView(
   projectId: string,
   viewId: string,
 ): Promise<void> {
-  await deleteDoc(doc(db, 'projects', projectId, 'smartViews', viewId));
+  writeAll(projectId, readAll(projectId).filter(v => v.id !== viewId));
 }

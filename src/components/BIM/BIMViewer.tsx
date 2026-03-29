@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import * as OBC from '@thatopen/components';
 import * as THREE from 'three';
 import {
@@ -7,7 +7,6 @@ import {
   Database,
   Layers,
   Upload,
-  Home,
   X,
   Loader2,
 } from 'lucide-react';
@@ -16,6 +15,7 @@ import ItemsFinderPanel from './panels/ItemsFinderPanel';
 import ColorsPalettePanel from './panels/ColorsPalettePanel';
 import DataEnhancerPanel from './panels/DataEnhancerPanel';
 import SmartViewsPanel from './panels/SmartViewsPanel';
+import ViewCube from './ViewCube';
 
 // ------------------------------------------------------------------
 // Types
@@ -52,7 +52,9 @@ const BIMViewer = ({ projectId }: BIMViewerProps) => {
     clearModels,
     loadIFC,
     isInitialized,
+    initError,
     loadedModels,
+    selectedItems,
     setSelectedItems,
     clearSelection,
     getComponents,
@@ -98,24 +100,6 @@ const BIMViewer = ({ projectId }: BIMViewerProps) => {
   };
 
   // ----------------------------------------------------------------
-  // Fit camera to all loaded models
-  // ----------------------------------------------------------------
-  const handleFitView = useCallback(async () => {
-    const components = getComponents();
-    const world = getWorld();
-    if (!components || !world) return;
-    const fm = components.get(OBC.FragmentsManager);
-    const allItems: OBC.ModelIdMap = {};
-    for (const model of fm.list.values()) {
-      const ids = await model.getLocalIds();
-      allItems[model.modelId] = new Set(ids);
-    }
-    if (Object.keys(allItems).length > 0) {
-      await world.camera.fitToItems(allItems);
-    }
-  }, [getComponents, getWorld]);
-
-  // ----------------------------------------------------------------
   // Click-to-select — distinguish click vs drag
   // ----------------------------------------------------------------
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -139,12 +123,9 @@ const BIMViewer = ({ projectId }: BIMViewerProps) => {
 
     const fm = components.get(OBC.FragmentsManager);
     const canvas = world.renderer.three.domElement;
-    const rect = canvas.getBoundingClientRect();
 
-    const mouse = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1,
-    );
+    // fragments.raycast expects raw pixel coords (clientX/Y), not NDC
+    const mouse = new THREE.Vector2(e.clientX, e.clientY);
 
     const camThree = world.camera.three;
     if (
@@ -153,12 +134,24 @@ const BIMViewer = ({ projectId }: BIMViewerProps) => {
     ) return;
 
     const result = await fm.raycast({ camera: camThree, mouse, dom: canvas });
+    const additive = e.ctrlKey || e.metaKey;
 
     if (result) {
       const modelId = result.fragments.modelId;
-      const newSelected: OBC.ModelIdMap = { [modelId]: new Set([result.localId]) };
-      await setSelectedItems(newSelected);
-    } else {
+      if (additive) {
+        // Merge with existing selection; toggle off if already selected
+        const existing = new Set(selectedItems[modelId] ?? []);
+        if (existing.has(result.localId)) {
+          existing.delete(result.localId);
+        } else {
+          existing.add(result.localId);
+        }
+        const merged: OBC.ModelIdMap = { ...selectedItems, [modelId]: existing };
+        await setSelectedItems(merged);
+      } else {
+        await setSelectedItems({ [modelId]: new Set([result.localId]) });
+      }
+    } else if (!additive) {
       await clearSelection();
     }
   };
@@ -193,29 +186,31 @@ const BIMViewer = ({ projectId }: BIMViewerProps) => {
         onMouseUp={e => { void handleMouseUp(e); }}
       />
 
-      {/* ── Loading spinner while initializing ─────────────────── */}
+      {/* ── Loading spinner / error while initializing ──────────── */}
       {!isInitialized && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 z-30">
-          <Loader2 className="w-10 h-10 text-brand animate-spin" />
+          {initError ? (
+            <div className="text-center px-6">
+              <p className="text-rose-400 font-semibold mb-1">BIM viewer failed to initialize</p>
+              <p className="text-slate-400 text-sm font-mono">{initError}</p>
+            </div>
+          ) : (
+            <Loader2 className="w-10 h-10 text-brand animate-spin" />
+          )}
         </div>
       )}
 
-      {/* ── Top-right: IFC upload + fit ─────────────────────────── */}
-      <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
+      {/* ── View cube ────────────────────────────────────────────── */}
+      {isInitialized && <ViewCube />}
+
+      {/* ── Bottom-center: IFC upload ─────────────────────────────── */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-20">
         {loadError && (
           <span className="text-xs text-rose-400 bg-rose-400/10 rounded-lg px-3 py-2 max-w-xs truncate">
             {loadError}
           </span>
         )}
-        <button
-          onClick={() => void handleFitView()}
-          disabled={loadedModels.length === 0}
-          className="flex items-center gap-2 px-3 py-2 bg-slate-800/80 backdrop-blur border border-slate-700 text-slate-300 text-sm rounded-xl hover:text-white hover:bg-slate-700 disabled:opacity-40 transition-colors"
-          title="Fit view to model"
-        >
-          <Home className="w-4 h-4" />
-        </button>
-        <label className="flex items-center gap-2 px-4 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dark transition-colors cursor-pointer">
+        <label className="flex items-center gap-2 px-6 py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dark transition-colors cursor-pointer shadow-lg shadow-brand/20">
           {isLoadingIFC ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
@@ -241,7 +236,7 @@ const BIMViewer = ({ projectId }: BIMViewerProps) => {
             className={`w-11 h-11 flex items-center justify-center rounded-xl border transition-all ${
               activePanel === btn.id
                 ? 'bg-brand text-white border-brand shadow-lg shadow-brand/30'
-                : 'bg-slate-800/80 backdrop-blur border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700'
+                : 'bg-slate-800/80 backdrop-blur border-slate-700 text-brand hover:text-white hover:bg-slate-700'
             }`}
           >
             {btn.icon}
@@ -257,7 +252,7 @@ const BIMViewer = ({ projectId }: BIMViewerProps) => {
             <h2 className="text-sm font-bold text-white">{panelTitle}</h2>
             <button
               onClick={() => setActivePanel(null)}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-brand hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
             </button>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import * as OBC from '@thatopen/components';
 import type { ModelIdMap } from '@thatopen/components';
 import type { ItemData } from '@thatopen/fragments';
@@ -202,7 +202,7 @@ const DataEnhancerPanel = () => {
                         className="text-slate-500 hover:text-brand"
                         title="Find all items with this value"
                       >
-                        <Users className="w-3.5 h-3.5" />
+                        <Plus className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </td>

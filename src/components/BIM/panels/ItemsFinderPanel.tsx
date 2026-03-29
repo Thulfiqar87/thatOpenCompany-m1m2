@@ -156,7 +156,10 @@ const ItemsFinderPanel = () => {
     const components = getComponents();
     if (!components) return;
     const finder = components.get(OBC.ItemsFinder);
-    finder.list.delete(q.name);
+    // Delete by instance reference — imported queries are keyed by guid, not name
+    for (const [key, value] of finder.list.entries()) {
+      if (value === q) { finder.list.delete(key); break; }
+    }
     setSavedQueries(prev => prev.filter(s => s !== q));
   };
 
@@ -167,6 +170,23 @@ const ItemsFinderPanel = () => {
     const components = getComponents();
     if (!components) return;
     const finder = components.get(OBC.ItemsFinder);
+
+    // Auto-save the current form if it has content but was never saved
+    if (finder.list.size === 0 && (form.category.trim() || form.attrName.trim())) {
+      try {
+        const params = buildQuery();
+        const q = finder.create(form.queryName || 'Query', [params]);
+        setSavedQueries(prev => [...prev, q]);
+      } catch {
+        // ignore invalid regex — the export will just be empty
+      }
+    }
+
+    if (finder.list.size === 0) {
+      setError('No queries to export — fill in a filter and click Save first.');
+      return;
+    }
+
     const exported = finder.export();
     const blob = new Blob([JSON.stringify(exported, null, 2)], {
       type: 'application/json',

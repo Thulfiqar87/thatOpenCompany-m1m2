@@ -16,6 +16,7 @@ export interface SmartView {
   };
   queries: SerializedFinderQuery[];
   colorizations: ColorEntry[];
+  selection: Record<string, number[]>; // modelId → localIds (Sets serialized as arrays)
   createdAt: string;
   updatedAt: string;
 }

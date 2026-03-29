@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, RefreshCw, Download, Upload, Trash2, Eye } from 'lucide-react';
+import { Plus, RefreshCw, Download, Upload, Trash2, Eye, Crosshair, X } from 'lucide-react';
 import * as OBC from '@thatopen/components';
 import * as THREE from 'three';
 import { v4 as uuid } from 'uuid';
@@ -21,9 +21,12 @@ const SmartViewsPanel = ({ projectId }: SmartViewsPanelProps) => {
     getWorld,
     selectedItems,
     colorizations,
+    isIsolated,
     setSelectedItems,
     setColorizations,
     setItemsColor,
+    isolateItems,
+    exitIsolation,
   } = useBIM();
 
   const [views, setViews] = useState<SmartView[]>([]);
@@ -67,6 +70,11 @@ const SmartViewsPanel = ({ projectId }: SmartViewsPanelProps) => {
     const finder = components.get(OBC.ItemsFinder);
     const exported = finder.export();
 
+    const selection: Record<string, number[]> = {};
+    for (const [modelId, ids] of Object.entries(selectedItems)) {
+      if (ids.size > 0) selection[modelId] = Array.from(ids);
+    }
+
     return {
       id: uuid(),
       name: newViewName.trim() || 'Smart View',
@@ -80,6 +88,7 @@ const SmartViewsPanel = ({ projectId }: SmartViewsPanelProps) => {
         ...c,
         localIds: [...c.localIds],
       })),
+      selection,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -123,6 +132,11 @@ const SmartViewsPanel = ({ projectId }: SmartViewsPanelProps) => {
     const finder = components.get(OBC.ItemsFinder);
     const exported = finder.export();
 
+    const selection: Record<string, number[]> = {};
+    for (const [modelId, ids] of Object.entries(selectedItems)) {
+      if (ids.size > 0) selection[modelId] = Array.from(ids);
+    }
+
     const updated: SmartView = {
       ...view,
       camera: {
@@ -131,6 +145,7 @@ const SmartViewsPanel = ({ projectId }: SmartViewsPanelProps) => {
       },
       queries: exported.data,
       colorizations: colorizations.map(c => ({ ...c, localIds: [...c.localIds] })),
+      selection,
       updatedAt: new Date().toISOString(),
     };
 
@@ -183,8 +198,14 @@ const SmartViewsPanel = ({ projectId }: SmartViewsPanelProps) => {
         }
       }
 
-      // Select items from queries
-      if (view.queries.length > 0) {
+      // Restore selection — prefer explicit saved selection, fall back to query results
+      if (view.selection && Object.keys(view.selection).length > 0) {
+        const selectionMap: OBC.ModelIdMap = {};
+        for (const [modelId, ids] of Object.entries(view.selection)) {
+          selectionMap[modelId] = new Set(ids);
+        }
+        await setSelectedItems(selectionMap);
+      } else if (view.queries.length > 0) {
         const allItems: OBC.ModelIdMap = {};
         for (const q of finder.list.values()) {
           const found = await finder.getItems(q.queries);
@@ -271,8 +292,8 @@ const SmartViewsPanel = ({ projectId }: SmartViewsPanelProps) => {
     <div className="flex flex-col h-full gap-4">
       {/* Context info */}
       <p className="text-xs text-slate-400">
-        Smart views save camera position, active queries, and colorizations to
-        Firebase. Click <strong className="text-white">Apply</strong> to restore
+        Smart views save camera position, selection, queries, and colorizations
+        locally. Click <strong className="text-white">Apply</strong> to restore
         a view.
       </p>
       {selectedItems && Object.keys(selectedItems).length > 0 && (
@@ -327,7 +348,7 @@ const SmartViewsPanel = ({ projectId }: SmartViewsPanelProps) => {
                 {view.name}
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
-                {view.queries.length} quer{view.queries.length === 1 ? 'y' : 'ies'}{' '}
+                {Object.values(view.selection ?? {}).reduce((s, a) => s + a.length, 0)} selected{' '}
                 · {view.colorizations.length} color{view.colorizations.length !== 1 ? 's' : ''}
               </p>
             </div>
@@ -337,6 +358,21 @@ const SmartViewsPanel = ({ projectId }: SmartViewsPanelProps) => {
               title="Apply view"
             >
               <Eye className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                if (view.selection && Object.keys(view.selection).length > 0) {
+                  const modelIdMap: Record<string, Set<number>> = {};
+                  for (const [mid, ids] of Object.entries(view.selection)) {
+                    modelIdMap[mid] = new Set(ids);
+                  }
+                  void (isIsolated ? exitIsolation() : isolateItems(modelIdMap));
+                }
+              }}
+              className={`${isIsolated ? 'text-amber-400 hover:text-slate-400' : 'text-slate-400 hover:text-amber-400'}`}
+              title={isIsolated ? 'Exit isolation' : 'Isolate selection'}
+            >
+              {isIsolated ? <X className="w-4 h-4" /> : <Crosshair className="w-4 h-4" />}
             </button>
             <button
               onClick={() => void handleUpdate(view)}
